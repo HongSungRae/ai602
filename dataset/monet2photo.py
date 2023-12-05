@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from dataset import data_root
+
+
+data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir
+
 
 class Monet2Photo(Dataset):
     def __init__(self, split, size=256):

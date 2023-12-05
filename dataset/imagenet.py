@@ -5,7 +5,10 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import cv2
 import torch
-from dataset import data_root
+
+
+data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir
+
 
 # mini : 
 # tiny : https://www.kaggle.com/datasets/akash2sharma/tiny-imagenet
