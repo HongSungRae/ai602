@@ -46,9 +46,8 @@ class ParallelAttentionFeed(nn.Module):
                                       nn.Linear(mlp_dim, dim))
 
         self.layer_norm = nn.LayerNorm(int(dim/heads), elementwise_affine=False)
-        self.layer_norm2 = nn.LayerNorm(dim, elementwise_affine=False)
-
         self.to_out = nn.Linear(dim, dim)
+
     def forward(self, x, mask = None):
         # q,k,v,mlp_in 나누기 및 LN
         b, n, _, h = *x.shape, self.heads
@@ -77,7 +76,6 @@ class ParallelAttentionFeed(nn.Module):
 
         # self attention 값과 mlp 값 합쳐서 하나의 출력 만들기
         out =  attn_out + parallel
-        out = self.layer_norm2(out)
         return out
 
 
@@ -98,7 +96,7 @@ class Transformer22B(nn.Module):
 
 
 
-class ViT22B(nn.Module):
+class ViT22BGAN(nn.Module):
     def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, channels=3):
         super().__init__()
         assert image_size % patch_size == 0, 'image dimensions must be divisible by the patch size'
@@ -107,19 +105,17 @@ class ViT22B(nn.Module):
 
         self.patch_size = patch_size
 
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim))
         self.patch_to_embedding = nn.Linear(patch_dim, dim)
-        # self.layer_norm = nn.LayerNorm(dim, elementwise_affine=False)
-        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.layer_norm = nn.LayerNorm(dim, elementwise_affine=False)
+        
         self.transformer22B = Transformer22B(dim, depth, heads, mlp_dim)
 
-        self.to_cls_token = nn.Identity()
 
-        self.mlp_head = nn.Sequential(
+        self.linear_decoder = nn.Sequential(
             nn.Linear(dim, mlp_dim),
-            nn.BatchNorm1d(mlp_dim),
             nn.GELU(),
-            nn.Linear(mlp_dim, num_classes)
+            nn.Linear(mlp_dim, patch_dim)
         )
 
     def forward(self, img, mask=None):
@@ -127,19 +123,20 @@ class ViT22B(nn.Module):
 
         x = rearrange(img, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = p, p2 = p)
         x = self.patch_to_embedding(x)
-        # x = self.layer_norm(x)
+        x = self.layer_norm(x)
 
-        cls_tokens = self.cls_token.expand(img.shape[0], -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
         x += self.pos_embedding
         x = self.transformer22B(x, mask)
 
-        x = self.to_cls_token(x[:, 0])
-        return self.mlp_head(x)
+        x = self.linear_decoder(x)
+        print(x.shape)
+        x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', p1=p, p2=p, h=int(x.shape[1]**0.5))
+        x = torch.tanh(x)
+        return x
 
 
 if __name__ == '__main__':
-    vit22b = ViT22B(image_size=224,
+    vit22b = ViT22BGAN(image_size=224,
                     patch_size=16,
                     num_classes=10,
                     dim=1024,
@@ -150,5 +147,6 @@ if __name__ == '__main__':
     y = vit22b(x)
 
     print(y.shape)
+    print(torch.min(y), torch.max(y))
 
-    summary(vit22b, (3,224,224))
+    # summary(vit22b, (3,224,224))

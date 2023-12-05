@@ -1,5 +1,8 @@
 import os
 import json
+import random
+import torch
+import numpy as np
 
 
 def maks_dir(path):
@@ -26,3 +29,14 @@ def check_parser(args):
     assert args.model != None, '오류 : 학습 및 검증할 ViT 모델을 지정하세요.'
     assert args.task != None, '오류 : 어떤 Task를 수행할지 지정하세요.'
     assert args.dataset != None, '오류 : 어떤 dataset에 실험을 수행할지 지정하세요.'
+
+
+def seed_everything(seed=None):
+    if seed is not None:
+        random.seed(seed)
+        os.environ['PYTHONHASHSEED'] = str(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = True

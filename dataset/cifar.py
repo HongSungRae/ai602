@@ -37,7 +37,7 @@ def get_cifar_dataset(cifar=None, split=None, size=256):
                                         download=True,
                                         transform=transform)
         elif split == 'test':
-            dataset = datasets.CIFAR10(root=root,
+            dataset = datasets.CIFAR100(root=root,
                                        train=False,
                                        download=True,
                                        transform=test_transform)

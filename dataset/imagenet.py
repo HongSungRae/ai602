@@ -13,16 +13,18 @@ import numpy as np
 # mini : 
 # tiny : https://www.kaggle.com/datasets/akash2sharma/tiny-imagenet
 class ImageNet(Dataset):
-    def __init__(self, dtype, split, size):
+    def __init__(self, dtype, split, size=64):
         assert dtype in ['mini','tiny'], 'ImageNet data type Error.'
-        assert split in ['train', 'test'], 'Split Error.'
-        self.split = split if split=='train' else 'val'
+        assert split in ['train', 'test', 'validation'], 'Split Error.'
+        if dtype == 'mini':
+            self.split = split if split=='train' else 'val'
+        else:
+            self.split = split
         self.dtype = dtype
         if dtype == 'mini':
             path = r'E:/sungrae/data/imagenet-mini'
         else:
             path = r'E:/sungrae/data/imagenet-tiny'
-            raise NotImplementedError('데이터가 없어요~')
         self.df = self._make_split_info(path, self.split)
         if split == 'train':
             self.transform = A.Compose([A.Resize(size,size),
@@ -31,7 +33,7 @@ class ImageNet(Dataset):
                                         A.RandomCrop(size,size,p=0.33),
                                         A.Normalize(max_pixel_value=255),
                                         ToTensorV2()])
-        elif split in ['test', 'val']:
+        elif split in ['test', 'validation', 'val']:
             self.transform = A.Compose([A.Resize(size,size),
                                         A.Normalize(max_pixel_value=255),
                                         ToTensorV2()])
@@ -65,13 +67,13 @@ class ImageNet(Dataset):
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         img = self.transform(image=img)['image']
         
-        return img.type(torch.float32), torch.LongTensor([int(cls)])
+        return img.type(torch.float32), torch.tensor(int(cls)).type(torch.LongTensor)
 
 
 if __name__ == '__main__':
-    dataset = ImageNet('mini', 'test', 224)
+    dataset = ImageNet('mini', 'test', 64)
     dataloader = DataLoader(dataset, 32, True)
     img, target = next(iter(dataloader))
 
-    print(img.shape, target.shape) # (b,3,size,size), (b,1)
+    print(img.shape, target.shape) # (b,3,size,size), (b,)
     print(torch.min(img), torch.max(img))

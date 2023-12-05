@@ -1,3 +1,3 @@
-from trainer import gan, classification
+from trainer import cyclegan, cgan, classification, utils
 
-__all__ = ['gan', 'classification']
+__all__ = ['cyclegan', 'cgan', 'classification', 'utils']

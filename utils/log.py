@@ -77,14 +77,14 @@ class Logger(object):
 
 
 
-def draw_curve(work_dir, train_logger, test_logger):
+def draw_curve(work_dir, train_logger, test_logger, train_label="Train Loss", test_label="Test Loss"):
         train_logger = train_logger.read()
         test_logger = test_logger.read()
         epoch, train_loss = zip(*train_logger)
         epoch,test_loss = zip(*test_logger)
 
-        plt.plot(epoch, train_loss, color='blue', label="Train Loss")
-        plt.plot(epoch, test_loss, color='red', label="Test Loss")
+        plt.plot(epoch, train_loss, color='blue', label=train_label)
+        plt.plot(epoch, test_loss, color='red', label=test_label)
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.title("Loss Curve")

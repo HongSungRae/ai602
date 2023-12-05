@@ -1,5 +1,6 @@
 
-def train():
+
+def train(g, d):
     pass
 
 
