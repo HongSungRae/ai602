@@ -51,7 +51,8 @@ def main():
                             heads=model_config['heads'],
                             mlp_dim=model_config['mlp_size'])
         model.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
-        model = torch.nn.DataParallel(model).cuda()
+        if args.distributed:
+            model = torch.nn.DataParallel(model).cuda()
 
         ctest(model, test_dataloader, num_classes, save_path, args=None)    
     else: # gan

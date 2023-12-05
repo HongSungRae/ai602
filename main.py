@@ -67,8 +67,10 @@ def get_parser():
                         help='train epoch')
     parser.add_argument('--seed', default=None, type=int,
                         help='seed')
+    parser.add_argument('--distributed', '--d', action='store_true',
+                        help='False is default. How To Make True? : --distributed')
     parser.add_argument('--identity', '--i', action='store_true',
-                        help='How To Make TRUE? : --identity, Flase : default')
+                        help='Flase is default. How To Make TRUE? : --identity')
     
     ## gpu
     parser.add_argument('--gpu', default=0, type=int,
@@ -151,7 +153,8 @@ def main(args):
                             heads=model_config['heads'],
                             mlp_dim=model_config['mlp_size'])
         # model = DDP(model, delay_allreduce=True)
-        model = torch.nn.DataParallel(model).cuda()
+        if args.distributed:
+            model = torch.nn.DataParallel(model).cuda()
     elif args.task == 'cyclegan':
         if '22' in args.model:
             g_AB = vit22bgan.ViT22BGAN(image_size=args.image_size,
@@ -193,10 +196,11 @@ def main(args):
         g_BA.apply(weight_init)
         d_A.apply(weight_init)
         d_B.apply(weight_init)
-        g_AB = torch.nn.DataParallel(g_AB).cuda()
-        g_BA = torch.nn.DataParallel(g_BA).cuda()
-        d_A = torch.nn.DataParallel(d_A).cuda()
-        d_B = torch.nn.DataParallel(d_B).cuda()
+        if args.distributed:
+            g_AB = torch.nn.DataParallel(g_AB).cuda()
+            g_BA = torch.nn.DataParallel(g_BA).cuda()
+            d_A = torch.nn.DataParallel(d_A).cuda()
+            d_B = torch.nn.DataParallel(d_B).cuda()
     elif args.task == 'cgan':
         pass
     
@@ -232,12 +236,12 @@ def main(args):
     # train -> save -> test
     if args.task in ['cls', 'classification']:
         classification.train(model, train_dataloader, val_dataloader, criterion, optimizer, scheduler, args.epochs, save_path, args)
-        model.module.load_state_dict(torch.load(f'{save_path}/model.pt'))
+        utils.save_model(model, save_path, 'model.pt', args.distributed)
         classification.test(model, test_dataloader, num_classes, save_path, args)
     elif args.task == 'cyclegan':
         cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, args.epochs, save_path, args)
-        torch.save(g_AB.module.state_dict(), f'{save_path}/g_AB.pt')
-        torch.save(g_BA.module.state_dict(), f'{save_path}/g_BA.pt')
+        utils.save_model(g_AB, save_path, 'g_AB.pt', args.distributed)
+        utils.save_model(g_BA, save_path, 'g_BA.pt', args.distributed)
         cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args)
     elif args.task == 'cgan':
         pass

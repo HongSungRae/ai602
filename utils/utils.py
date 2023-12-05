@@ -31,6 +31,13 @@ def check_parser(args):
     assert args.dataset != None, '오류 : 어떤 dataset에 실험을 수행할지 지정하세요.'
 
 
+def save_model(model, save_path, model_name=None, distributed=False):
+    if distributed:
+        torch.save(model.module.state_dict(), f'{save_path}/{model_name}')
+    else:
+        torch.save(model.state_dict(), f'{save_path}/{model_name}')
+
+
 def seed_everything(seed=None):
     if seed is not None:
         random.seed(seed)
