@@ -20,7 +20,7 @@ import argparse
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import time
-from apex.parallel import DistributedDataParallel as DDP
+# from apex.parallel import DistributedDataParallel as DDP
 import os
 import itertools
 from copy import deepcopy
