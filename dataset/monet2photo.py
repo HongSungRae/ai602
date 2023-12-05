@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-
+from dataset import data_root
 
 class Monet2Photo(Dataset):
     def __init__(self, split, size=256):
@@ -12,8 +12,8 @@ class Monet2Photo(Dataset):
         self.split = split
         self.folder_name_monet = split + 'A'
         self.folder_name_photo = split + 'B'
-        self.data_list_monet = os.listdir(f'E:/sungrae/data/monet2photo/{self.folder_name_monet}')
-        self.data_list_photo = os.listdir(f'E:/sungrae/data/monet2photo/{self.folder_name_photo}')
+        self.data_list_monet = os.listdir(f'{data_root}/monet2photo/{self.folder_name_monet}')
+        self.data_list_photo = os.listdir(f'{data_root}/monet2photo/{self.folder_name_photo}')
         self.transform = A.Compose([A.Resize(size,size),
                                     ToTensorV2()])
     
@@ -22,11 +22,11 @@ class Monet2Photo(Dataset):
     
     def __getitem__(self, idx):
         # Monet
-        img_monet = plt.imread(f'E:/sungrae/data/monet2photo/{self.folder_name_monet}/{self.data_list_monet[idx]}')/255 # (256,256,3)
+        img_monet = plt.imread(f'{data_root}/monet2photo/{self.folder_name_monet}/{self.data_list_monet[idx]}')/255 # (256,256,3)
         img_monet = self.transform(image=img_monet)['image']
 
         # Photo
-        img_photo = plt.imread(f'E:/sungrae/data/monet2photo/{self.folder_name_photo}/{self.data_list_photo[idx]}')/255 # (256,256,3)
+        img_photo = plt.imread(f'{data_root}/monet2photo/{self.folder_name_photo}/{self.data_list_photo[idx]}')/255 # (256,256,3)
         img_photo = self.transform(image=img_photo)['image']
 
         # sacle to [-1,1]

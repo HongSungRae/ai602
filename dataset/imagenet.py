@@ -1,14 +1,11 @@
 from torch.utils.data import Dataset, DataLoader
 import os
-from glob import glob
 import pandas as pd
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import cv2
 import torch
-from tqdm import tqdm
-import numpy as np
-
+from dataset import data_root
 
 # mini : 
 # tiny : https://www.kaggle.com/datasets/akash2sharma/tiny-imagenet
@@ -22,9 +19,9 @@ class ImageNet(Dataset):
             self.split = split
         self.dtype = dtype
         if dtype == 'mini':
-            path = r'E:/sungrae/data/imagenet-mini'
+            path = fr'{data_root}/imagenet-mini'
         else:
-            path = r'E:/sungrae/data/imagenet-tiny'
+            path = fr'{data_root}/imagenet-tiny'
         self.df = self._make_split_info(path, self.split)
         if split == 'train':
             self.transform = A.Compose([A.Resize(size,size),

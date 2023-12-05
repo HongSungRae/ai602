@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
+from dataset import data_root
 
 
 class AppleOrange(Dataset):
@@ -12,8 +13,8 @@ class AppleOrange(Dataset):
         self.split = split
         self.folder_name_apple = split + 'A'
         self.folder_name_orange = split + 'B'
-        self.data_list_apple = os.listdir(fr'E:/sungrae/data/apple2orange/{self.folder_name_apple}')
-        self.data_list_orange = os.listdir(fr'E:/sungrae/data/apple2orange/{self.folder_name_orange}')
+        self.data_list_apple = os.listdir(fr'{data_root}/apple2orange/{self.folder_name_apple}')
+        self.data_list_orange = os.listdir(fr'{data_root}/apple2orange/{self.folder_name_orange}')
         self.transform = A.Compose([A.Resize(size,size),
                                     ToTensorV2()])
     
@@ -22,11 +23,11 @@ class AppleOrange(Dataset):
     
     def __getitem__(self, idx):
         # Apple
-        img_apple = plt.imread(f'E:/sungrae/data/apple2orange/{self.folder_name_apple}/{self.data_list_apple[idx]}')/255 # (256,256,3), np.array
+        img_apple = plt.imread(f'{data_root}/apple2orange/{self.folder_name_apple}/{self.data_list_apple[idx]}')/255 # (256,256,3), np.array
         img_apple = self.transform(image=img_apple)['image'] # (3,256,256), torch.tensor
 
         # Orange
-        img_orange = plt.imread(f'E:/sungrae/data/apple2orange/{self.folder_name_orange}/{self.data_list_orange[idx]}')/255 # (256,256,3), np.array
+        img_orange = plt.imread(f'{data_root}/apple2orange/{self.folder_name_orange}/{self.data_list_orange[idx]}')/255 # (256,256,3), np.array
         img_orange = self.transform(image=img_orange)['image'] # (3,256,256), torch.tensor
 
         # normalize to [-1,1]
