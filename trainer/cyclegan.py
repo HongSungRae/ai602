@@ -108,8 +108,6 @@ def test(g_AB, g_BA, test_dataloader, save_path, name='cycle_final', args=None, 
     with torch.no_grad():
         fake_B = g_AB(A)
         fake_A = g_BA(B)
-        # fake_B = fake_B*0.5 + 0.5 # [-1,1] 사이기 떄문에 [0,1]로 다시 스케일링
-        # fake_A = fake_A*0.5 + 0.5 # [-1,1] 사이기 떄문에 [0,1]로 다시 스케일링
         figures = torch.cat([A, fake_B, B, fake_A], dim=0)
         figures = figures*0.5 + 0.5 # [-1,1] 사이기 떄문에 [0,1]로 다시 스케일링
         figures = figures.detach().cpu().numpy()

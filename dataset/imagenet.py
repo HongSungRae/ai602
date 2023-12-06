@@ -5,9 +5,8 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import cv2
 import torch
+from parameters import data_root
 
-
-data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir
 
 
 # mini : 

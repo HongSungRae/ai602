@@ -1,0 +1,1 @@
+data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir

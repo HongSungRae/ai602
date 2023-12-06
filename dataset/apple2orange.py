@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
+from parameters import data_root
 
-
-data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir
 
 
 class AppleOrange(Dataset):

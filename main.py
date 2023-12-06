@@ -42,7 +42,7 @@ def get_parser():
     parser.add_argument('--model', default=None, type=str, 
                         choices=['vit-tiny', 'vit-small', 'vit-base', 'vit-large', 'vit-huge', 'vit-22bt', 'vit-22bs', 'vit-22bb', 'vit-22bl'],
                         help='model')
-    parser.add_argument('--task', default=None, type=str, choices=['cls', 'classification', 'cyclegan', 'cgan'],
+    parser.add_argument('--task', default=None, type=str, choices=['cls', 'classification', 'cyclegan'],
                         help='Task')
     parser.add_argument('--dataset', default=None, type=str, 
                         choices=['cifar10','cifar100','apple2orange','monet2photo','imagenet_mini', 'imagenet_tiny'],
@@ -126,8 +126,6 @@ def main(args):
     elif args.dataset == 'monet2photo': # cycleGAN
         train_dataset = monet2photo.Monet2Photo('train', args.image_size)
         test_dataset = monet2photo.Monet2Photo('test', args.image_size)
-    elif args.dataset == 'ade20k': # conditional GAN
-        pass
     # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, args.batch_size, True)#, sampler=train_sampler, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, 16, True)#, pin_memory=True)
@@ -155,6 +153,8 @@ def main(args):
         # model = DDP(model, delay_allreduce=True)
         if args.distributed:
             model = torch.nn.DataParallel(model).cuda()
+        else:
+            model = model.cuda()
     elif args.task == 'cyclegan':
         if '22' in args.model:
             g_AB = vit22bgan.ViT22BGAN(image_size=args.image_size,
@@ -201,8 +201,11 @@ def main(args):
             g_BA = torch.nn.DataParallel(g_BA).cuda()
             d_A = torch.nn.DataParallel(d_A).cuda()
             d_B = torch.nn.DataParallel(d_B).cuda()
-    elif args.task == 'cgan':
-        pass
+        else:
+            g_AB = g_AB.cuda()
+            g_BA = g_BA.cuda()
+            d_A = d_A.cuda()
+            d_B = d_B.cuda()
     
 
     # loss
@@ -211,8 +214,6 @@ def main(args):
     elif args.task == 'cyclegan':
         g_criterion = CycleGANGeneratorLoss(args.identity).cuda()
         d_criterion = CycleGANDiscrimonatorLoss().cuda()
-    elif args.task == 'cgan':
-        pass
 
 
     # optimizer
@@ -229,22 +230,17 @@ def main(args):
         lr = 2e-4
         g_optimizer = optim.Adam(itertools.chain(g_AB.parameters(), g_BA.parameters()), lr=lr, betas=[0.5, 0.999])
         d_optimizer = optim.Adam(itertools.chain(d_A.parameters(), d_B.parameters()), lr=lr, betas=[0.5, 0.999])
-    elif args.task == 'cgan':
-        pass
         
 
     # train -> save -> test
     if args.task in ['cls', 'classification']:
         classification.train(model, train_dataloader, val_dataloader, criterion, optimizer, scheduler, args.epochs, save_path, args)
-        utils.save_model(model, save_path, 'model.pt', args.distributed)
         classification.test(model, test_dataloader, num_classes, save_path, args)
     elif args.task == 'cyclegan':
         cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, args.epochs, save_path, args)
         utils.save_model(g_AB, save_path, 'g_AB.pt', args.distributed)
         utils.save_model(g_BA, save_path, 'g_BA.pt', args.distributed)
         cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args)
-    elif args.task == 'cgan':
-        pass
 
     # finish
     print('\n======== 프로세스 완료 ========')

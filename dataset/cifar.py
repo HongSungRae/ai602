@@ -1,8 +1,7 @@
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
+from parameters import data_root
 
-
-data_root = r'E:/sungrae/data' # Where you want save datasets in your local dir
 
 
 def get_cifar_dataset(cifar=None, split=None, size=256):

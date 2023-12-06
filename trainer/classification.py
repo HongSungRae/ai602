@@ -77,7 +77,7 @@ def train(model, train_dataloader, val_dataloader, criterion, optimizer, schedul
         if val_acc.avg > best_acc:
             best_acc = val_acc.avg
             count = 0
-            torch.save(model.module.state_dict(), f'{save_path}/model.pt')
+            utils.save_model(model, save_path, 'model.pt', args.distributed)
         else:
             count += 1
             if count == 15:

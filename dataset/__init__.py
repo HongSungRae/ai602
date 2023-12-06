@@ -1,3 +1,3 @@
-from dataset import ade20k, apple2orange, cifar, imagenet, monet2photo
+from dataset import apple2orange, cifar, imagenet, monet2photo
 
-__all__ = ['ade20k', 'apple2orange', 'cifar', 'imagenet', 'monet2photo']
+__all__ = ['apple2orange', 'cifar', 'imagenet', 'monet2photo']
