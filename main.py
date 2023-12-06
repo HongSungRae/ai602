@@ -235,6 +235,10 @@ def main(args):
     # train -> save -> test
     if args.task in ['cls', 'classification']:
         classification.train(model, train_dataloader, val_dataloader, criterion, optimizer, scheduler, args.epochs, save_path, args)
+        if args.distributed:
+            model.module.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
+        else:
+            model.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
         classification.test(model, test_dataloader, num_classes, save_path, args)
     elif args.task == 'cyclegan':
         cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, args.epochs, save_path, args)
