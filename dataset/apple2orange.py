@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from parameters import data_root
+from .parameters import data_root
 
 
 

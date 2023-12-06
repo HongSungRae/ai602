@@ -1,6 +1,6 @@
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
-from parameters import data_root
+from .parameters import data_root
 
 
 

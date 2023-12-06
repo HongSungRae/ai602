@@ -129,15 +129,36 @@ class ViTGAN(nn.Module):
         x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', p1=p, p2=p, h=int(x.shape[1]**0.5))
         x = torch.tanh(x)
         return x
+    
+
+    def forward(self, img, mask=None):
+        pass
+        # 1. 패치 리어레인지
+        # 2. 패치 임베딩
+        # 3. PE 더하기
+        # 4. 인코더 블럭
+            # for depth/2 동안
+                # depth/6 동안은 img_size, patch_size
+                # 1/2다운샘플링
+                # depth/6 동안은 img_size/2, patch_size/2
+                # 1/2다운샘플링
+                # depth/6 동안은 img_size/2, patch_szie/2
+                # 1/2
+        # 5. 디코더 블럭
+        # 6. 리어레인지
+        # 7. CNN 블럭
+        
+
+
 
 if __name__ == '__main__':
     v = ViTGAN(
     image_size = 224,
     patch_size = 32,
-    dim = 768,
+    dim = 192,
     depth = 12,
-    heads = 12,
-    mlp_dim = 3072
+    heads = 3,
+    mlp_dim = 768
     ).cuda()
 
     img = torch.randn(1, 3, 224, 224).cuda()

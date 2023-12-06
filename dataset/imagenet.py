@@ -5,7 +5,7 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import cv2
 import torch
-from parameters import data_root
+from .parameters import data_root
 
 
 
