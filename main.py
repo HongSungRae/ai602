@@ -133,7 +133,7 @@ def main(args):
     test_dataloader = DataLoader(test_dataset, batch_size, True)#, pin_memory=True)
 
     # model
-    model_config = utils.open_json(r'E:/sungrae/ai602/models/model_config.json')[args.model]
+    model_config = utils.open_json(r'./models/model_config.json')[args.model]
     if args.task in ['cls', 'classification']:
         if '22' in args.model:
             model = vit22b.ViT22B(image_size=args.image_size,

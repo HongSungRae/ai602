@@ -47,7 +47,8 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
                 d_A_loss = d_criterion(pred_real_A, pred_fake_A)
                 d_B_loss = d_criterion(pred_real_B, pred_fake_B)
                 d_loss = d_A_loss + d_B_loss
-
+            
+            d_optimizer.zero_grad()
             scaler_d.scale(d_loss).backward()
             scaler_d.step(d_optimizer)
             scaler_d.update()
@@ -74,6 +75,8 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
 
                 g_loss = g_criterion(A, pred_fake_A, cycle_A, id_A) +\
                          g_criterion(B, pred_fake_B, cycle_B, id_B)
+            
+            g_optimizer.zero_grad()
             scaler_g.scale(g_loss).backward()
             scaler_g.step(g_optimizer)
             scaler_g.update()
@@ -86,7 +89,7 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
         logger_g.write([epoch, train_g_loss.avg])
         print(f'{epoch+1} | {epochs} : D({train_d_loss.avg:.3f}) | G({train_g_loss.avg:.3f})')
 
-        if epoch+1 in [int(epochs*0.25), int(epochs*0.5), int(epochs*0.75)]:
+        if epoch+1 in [int(i*epochs*0.1) for i in range(1,10)]:
             test(g_AB, g_BA, test_dataloader, save_path, name=f'cycle_{epoch+1}')
 
     log.draw_curve(save_path, logger_d, logger_g, "Discriminator Loss", "Generator Loss")

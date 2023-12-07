@@ -23,12 +23,10 @@ def weight_init(m): # 가중치 초기화
 class CycleGANGeneratorLoss(nn.Module):
     def __init__(self, identity=False):
         super().__init__()
-        self.lam = 1
+        self.lam = 10
         self.identity = identity
         self.l1 = nn.L1Loss()
-        self.d_error = 0
-        self.c_error = 0
-
+    
     def forward(self,real,pred_fake,cycle,id=None):
         dis_loss = torch.mean((pred_fake-1)**2)
         cyc_loss = self.l1(real,cycle)
@@ -36,8 +34,6 @@ class CycleGANGeneratorLoss(nn.Module):
         if self.identity:
             assert id is not None
             loss += 0.5*self.lam*self.l1(real,id)
-        self.d_error = dis_loss.item()
-        self.c_error = cyc_loss.item()
         return loss
 
 
