@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 import torch.nn.functional as F
-import math
-
+from torchsummary import summary
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -91,8 +90,27 @@ class Transformer(nn.Module):
         return x
 
 
+class ResidualBlock(nn.Module):
+  def __init__(self, in_feature):
+    super().__init__()
+
+    self.block = nn.Sequential(
+      nn.ReflectionPad2d(1),
+      nn.Conv2d(in_feature, in_feature, 3),
+      nn.InstanceNorm2d(in_feature),
+      nn.ReLU(inplace=True),
+      nn.ReflectionPad2d(1),
+      nn.Conv2d(in_feature, in_feature, 3),
+      nn.InstanceNorm2d(in_feature),
+    )
+  
+  def forward(self, x):
+    return x + self.block(x)
+  
+
 class ViTUnet(nn.Module):
     def __init__(self, *, image_size, patch_size, dim, depth, heads, mlp_dim, channels=3):
+        super().__init__()
         assert image_size % patch_size == 0, 'image dimensions must be divisible by the patch size'
         assert depth % 2 == 0, 'encoder-decoder should have same depth'
         assert depth % 3 == 0, 'downsample and upsample is consisted with 3 levels'
@@ -103,39 +121,47 @@ class ViTUnet(nn.Module):
         self.patch_size = patch_size
         self.num_patches = (image_size // patch_size) ** 2
         patch_dim = channels * patch_size ** 2
-        self.milestone = [int((2/6)*(depth/2)), int((4/6)*(depth/2)), int((6/6)*(depth/2))]
 
         # networks
         self.pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
         self.patch_to_embedding = nn.Linear(patch_dim, dim)
-        self.scale_factor_list = []
         encoder_list = []
         decoder_list = []
         for i in range(3):
-            for j in range(1,int(depth/6)+1):
-                transformer_encoder = Transformer(dim=dim,
-                                                  depth=int(depth/2),
-                                                  heads=heads,
-                                                  mlp_dim=int())
+            transformer_encoder = Transformer(dim=int(dim*(0.5**i)),
+                                              depth=int(depth/6),
+                                              heads=heads,
+                                              mlp_dim=int(mlp_dim*(0.5**i)))
+            transformer_decoder = Transformer(dim=int(dim*(0.5**(2-i))),
+                                              depth=int(depth/6),
+                                              heads=heads,
+                                              mlp_dim=int(mlp_dim*(0.5**(2-i))))
             encoder_list.append(transformer_encoder)
-
-        for i in range(int(depth))
+            decoder_list.append(transformer_decoder)
         self.encoders = nn.ModuleList(encoder_list)
         self.decoders = nn.ModuleList(decoder_list)
-        self.peak = Transformer(dim=int(dim/4),
+        self.peak = Transformer(dim=int(dim/8),
                                 depth=int(depth/6),
                                 heads=heads,
-                                mlp_dim=int(mlp_dim/4))
-        self.cnn = nn.Sequential(nn.Conv2d(12,64,3,1),
-                                 nn.InstanceNorm2d(64),
-                                 nn.ReLU(),
-                                 nn.Conv2d(64,128,3,1),
-                                 nn.InstanceNorm2d(128),
-                                 nn.ReLU(),
-                                 nn.Conv2d(128,64,3,1),
-                                 nn.InstanceNorm2d(64),
-                                 nn.ReLU(),
-                                 nn.Conv2d(64,3,3,1))
+                                mlp_dim=int(mlp_dim/8))
+        self.to_out = nn.Linear(dim, patch_dim)
+        cnn = [nn.ReflectionPad2d(1),
+               nn.Conv2d(12,64,3),
+               nn.InstanceNorm2d(64),
+               nn.ReLU(),
+               nn.ReflectionPad2d(1),
+               nn.Conv2d(64,128,3),
+               nn.InstanceNorm2d(128),
+               nn.ReLU()]
+        for _ in range(int(depth/6)):
+            cnn += [ResidualBlock(128)]
+        cnn += [nn.ReflectionPad2d(1),
+                nn.Conv2d(128,64,3),
+                nn.InstanceNorm2d(64),
+                nn.ReLU(),
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(64,3,3,1)]
+        self.cnn = nn.Sequential(*cnn)
     
 
     def forward(self, x, mask=None):
@@ -145,96 +171,49 @@ class ViTUnet(nn.Module):
         # 2. embedding
         x = self.patch_to_embedding(x)
 
-        # 3. +=PE
-        x += self.pos_embedding
-
-        # 4. Encode
+        # 3. Encode
         encoder_features = []
-        for idx, encoder in enumerate(self.encoders):
-            if ??:
-                scale_factor = ??
+        for idx, encoder in enumerate(self.encoders): # range(3)
+            x = F.interpolate(x, scale_factor=[1,0.5,0.5][idx]) # down sample
+            x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
             x = encoder(x)
             encoder_features.append(x)
-            if ??:
-                x = F.interpolate(x, scale_factor=scale_factor)
-        x += F.interpolate(self.pos_embedding, scale_factor=0.25)
+        x = F.interpolate(x, scale_factor=0.5)
+        x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
         x = self.peak(x)
 
-        # 5. Decode
-        for idx, decoder in enumerate(self.decoders):
-            scale_factor = ??
-            x = F.interpolate(x, scale_factor=scale_factor)
-            x = torch.cat([encoder_features[-idx], x], dim=1)
+        # 4. Decode
+        for idx, decoder in enumerate(self.decoders): # range(3)
+            x = F.interpolate(x, scale_factor=2) # up sample
+            x = torch.cat([encoder_features[-idx-1], x], dim=1)
             x = decoder(x)
+        x = self.to_out(x)
         
-        # 4. Reshape
+        # 5. Reshape
         x = rearrange(x, 'b (t h w) (p1 p2 c) -> b (t c) (h p1) (w p2)', 
                       p1=self.patch_size, p2=self.patch_size, c=self.channels, t=4, h=int(self.num_patches**0.5))
 
-        # 5. CNN
+        # 6. CNN
         x = self.cnn(x)
         
         # 7. tanh 
         x = torch.tanh(x)
         return x
 
-class ViTGAN(nn.Module):
-    def __init__(self, *, image_size, patch_size, dim, depth, heads, mlp_dim, channels=3):
-        super().__init__()
-        assert image_size % patch_size == 0, 'image dimensions must be divisible by the patch size'
-        num_patches = (image_size // patch_size) ** 2
-        patch_dim = channels * patch_size ** 2
-        self.patch_dim = patch_dim
-
-        self.patch_size = patch_size
-
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim))
-        self.patch_to_embedding = nn.Linear(patch_dim, dim)
-        self.transformer = Transformer(dim, depth, heads, mlp_dim)
-
-        self.linear_decoder = nn.Sequential(
-            nn.Linear(dim, mlp_dim),
-            nn.GELU(),
-            nn.Linear(mlp_dim, patch_dim)
-        )
-
-    def forward(self, img, mask=None):
-        p = self.patch_size
-
-        x = rearrange(img, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = p, p2 = p)
-        x = self.patch_to_embedding(x)
-        # print(x.shape)
-
-        x += self.pos_embedding
-        x = self.transformer(x, mask)
-        # print(x.shape)
-
-        x = self.linear_decoder(x)
-        x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', p1=p, p2=p, h=int(x.shape[1]**0.5))
-        x = torch.tanh(x)
-        return x
-    
-
-    def forward(self, img, mask=None):
-        pass
-        # 1. 패치 리어레인지
-        # 2. 패치 임베딩
-        # 3. PE 더하기
-        # 4. 인코더 블럭
-            # for depth/2 동안
-                # depth/6 동안은 img_size, patch_size
-                # 1/2다운샘플링
-                # depth/6 동안은 img_size/2, patch_size/2
-                # 1/2다운샘플링
-                # depth/6 동안은 img_size/2, patch_szie/2
-                # 1/2
-        # 5. 디코더 블럭
-        # 6. 리어레인지
-        # 7. CNN 블럭
-
 
 
 
 
 if __name__ == '__main__':
-    pass
+    vitunet = ViTUnet(image_size=224,
+                      patch_size=32,
+                      dim=192*2,
+                      depth=12,
+                      heads=3,
+                      mlp_dim=768*2)
+    x = torch.zeros(16,3,224,224)
+    recon_x = vitunet(x)
+    
+    summary(vitunet, (3,224,224), device='cpu')
+    print(recon_x.shape)
+    print(torch.min(recon_x), torch.max(recon_x))

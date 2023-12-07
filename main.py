@@ -30,7 +30,7 @@ from copy import deepcopy
 from trainer import cyclegan, classification
 from trainer.utils import CycleGANDiscrimonatorLoss, CycleGANGeneratorLoss, weight_init
 from utils import utils
-from models import vit, vit22b, discriminator, vitgan, vit22bgan
+from models import vit, vit22b, discriminator, vitgan, vit22bgan, vitunet
 from dataset import cifar, apple2orange, monet2photo, imagenet
 
 
@@ -40,7 +40,7 @@ def get_parser():
     parser.add_argument('--experiment_name', '--e', default=None, type=str,
                         help='please name your experiment')
     parser.add_argument('--model', default=None, type=str, 
-                        choices=['vit-tiny', 'vit-small', 'vit-base', 'vit-large', 'vit-huge', 'vit-22bt', 'vit-22bs', 'vit-22bb', 'vit-22bl'],
+                        choices=['vit-tiny', 'vit-small', 'vit-base', 'vit-large', 'vit-huge', 'vit-22bt', 'vit-22bs', 'vit-22bb', 'vit-22bl', 'vitunet'],
                         help='model')
     parser.add_argument('--task', default=None, type=str, choices=['cls', 'classification', 'cyclegan'],
                         help='Task')
@@ -126,10 +126,11 @@ def main(args):
     elif args.dataset == 'monet2photo': # cycleGAN
         train_dataset = monet2photo.Monet2Photo('train', args.image_size)
         test_dataset = monet2photo.Monet2Photo('test', args.image_size)
+    args.num_classes = num_classes
+    batch_size = 16 if 'gan' in args.task else args.batch_size
     # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, args.batch_size, True)#, sampler=train_sampler, pin_memory=True)
-    test_dataloader = DataLoader(test_dataset, 16, True)#, pin_memory=True)
-    args.num_classes = num_classes
+    test_dataloader = DataLoader(test_dataset, batch_size, True)#, pin_memory=True)
 
     # model
     model_config = utils.open_json(r'E:/sungrae/ai602/models/model_config.json')[args.model]
@@ -169,6 +170,19 @@ def main(args):
                                        depth=model_config['layers'],
                                        heads=model_config['heads'],
                                        mlp_dim=model_config['mlp_size'])
+        elif args.model == 'vitunet':
+            g_AB = vitunet.ViTUnet(image_size=args.image_size,
+                                   patch_size=args.patch_size,
+                                   dim=model_config['hidden_d'],
+                                   depth=model_config['layers'],
+                                   heads=model_config['heads'],
+                                   mlp_dim=model_config['mlp_size'])
+            g_BA = vitunet.ViTUnet(image_size=args.image_size,
+                                   patch_size=args.patch_size,
+                                   dim=model_config['hidden_d'],
+                                   depth=model_config['layers'],
+                                   heads=model_config['heads'],
+                                   mlp_dim=model_config['mlp_size'])
         else:
             g_AB = vitgan.ViTGAN(image_size=args.image_size,
                                  patch_size=args.patch_size,
@@ -241,7 +255,7 @@ def main(args):
             model.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
         classification.test(model, test_dataloader, num_classes, save_path, args)
     elif args.task == 'cyclegan':
-        cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, args.epochs, save_path, args)
+        cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, test_dataloader, args.epochs, save_path, args)
         utils.save_model(g_AB, save_path, 'g_AB.pt', args.distributed)
         utils.save_model(g_BA, save_path, 'g_BA.pt', args.distributed)
         cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args)

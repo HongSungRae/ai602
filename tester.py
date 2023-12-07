@@ -12,6 +12,8 @@ from dataset import cifar, apple2orange, monet2photo, imagenet
 parser = argparse.ArgumentParser(description='ViT-Test')
 parser.add_argument('--experiment_name', '--e', default=None, type=str,
                         help='please name your experiment')
+parser.add_argument('--distributed', '--d', action='store_true',
+                    help='False is default. How To Make True? : --distributed')
 args = parser.parse_args()
 
 
@@ -53,6 +55,8 @@ def main():
         model.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
         if args.distributed:
             model = torch.nn.DataParallel(model).cuda()
+        else:
+            model = model.cuda()
 
         ctest(model, test_dataloader, num_classes, save_path, args=None)    
     else: # gan

@@ -9,7 +9,7 @@ import numpy as np
 from utils import log
 
 
-def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, epochs, save_path, identity=False, args=None):
+def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, test_dataloader, epochs, save_path, identity=False, args=None):
     lr = 2e-4
 
     scaler_g = GradScaler()
@@ -87,8 +87,8 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
         print(f'{epoch+1} | {epochs} : D({train_d_loss.avg:.3f}) | G({train_g_loss.avg:.3f})')
 
         if epoch+1 in [int(epochs*0.25), int(epochs*0.5), int(epochs*0.75)]:
-            test(g_AB, g_BA, train_dataloader, save_path, name=f'cycle_{epoch+1}')
-        
+            test(g_AB, g_BA, test_dataloader, save_path, name=f'cycle_{epoch+1}')
+
     log.draw_curve(save_path, logger_d, logger_g, "Discriminator Loss", "Generator Loss")
 
             

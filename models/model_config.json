@@ -33,5 +33,9 @@
  "vit-22bl":{"layers":24,
              "hidden_d":1024,
              "mlp_size":4096,
-             "heads":16}
+             "heads":16},
+ "vitunet":{"layers":12,
+            "hidden_d":384,
+            "mlp_size":1536,
+            "heads":3}
 }
