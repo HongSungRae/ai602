@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # local
-from utils import log
+from utils import log, utils
 
 
 def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, test_dataloader, epochs, save_path, identity=False, args=None):
@@ -91,6 +91,8 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
 
         if epoch+1 in [int(i*epochs*0.1) for i in range(1,10)]:
             test(g_AB, g_BA, test_dataloader, save_path, name=f'cycle_{epoch+1}')
+            utils.save_model(g_AB, save_path, f'g_AB_{epoch+1}.pt', args.distributed)
+            utils.save_model(g_BA, save_path, f'g_BA_{epoch+1}.pt', args.distributed)
 
     log.draw_curve(save_path, logger_d, logger_g, "Discriminator Loss", "Generator Loss")
 

@@ -3,6 +3,8 @@ import torch.nn as nn
 from einops import rearrange
 import torch.nn.functional as F
 from torchsummary import summary
+import numpy as np
+
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -108,6 +110,9 @@ class ResidualBlock(nn.Module):
     return x + self.block(x)
   
 
+    
+
+
 class ViTUnet(nn.Module):
     def __init__(self, *, image_size, patch_size, dim, depth, heads, mlp_dim, channels=3):
         super().__init__()
@@ -144,6 +149,7 @@ class ViTUnet(nn.Module):
                                 depth=int(depth/6),
                                 heads=heads,
                                 mlp_dim=int(mlp_dim/8))
+        # self.to_out = nn.Sequential(nn.Linear(dim*4, patch_dim))
         self.to_out = nn.Linear(dim, patch_dim)
         cnn = [nn.ReflectionPad2d(1),
                nn.Conv2d(12,64,3),
@@ -153,7 +159,7 @@ class ViTUnet(nn.Module):
                nn.Conv2d(64,128,3),
                nn.InstanceNorm2d(128),
                nn.ReLU()]
-        for _ in range(int(depth/6)):
+        for _ in range(int(depth/3)):
             cnn += [ResidualBlock(128)]
         cnn += [nn.ReflectionPad2d(1),
                 nn.Conv2d(128,64,3),
@@ -170,16 +176,17 @@ class ViTUnet(nn.Module):
         
         # 2. embedding
         x = self.patch_to_embedding(x)
+        x += self.pos_embedding
 
         # 3. Encode
         encoder_features = []
         for idx, encoder in enumerate(self.encoders): # range(3)
             x = F.interpolate(x, scale_factor=[1,0.5,0.5][idx]) # down sample
-            x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
+            # x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
             x = encoder(x)
             encoder_features.append(x)
         x = F.interpolate(x, scale_factor=0.5)
-        x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
+        # x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
         x = self.peak(x)
 
         # 4. Decode
@@ -187,9 +194,11 @@ class ViTUnet(nn.Module):
             x = F.interpolate(x, scale_factor=2) # up sample
             x = torch.cat([encoder_features[-idx-1], x], dim=1)
             x = decoder(x)
+        # x = rearrange(x, 'b (t h w) (dim) -> b (h w) (t dim)', t=4,h=int(self.num_patches**0.5))
         x = self.to_out(x)
         
         # 5. Reshape
+        # x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', c=self.channels,p1=self.patch_size,p2=self.patch_size,h=int(self.num_patches**0.5))
         x = rearrange(x, 'b (t h w) (p1 p2 c) -> b (t c) (h p1) (w p2)', 
                       p1=self.patch_size, p2=self.patch_size, c=self.channels, t=4, h=int(self.num_patches**0.5))
 
@@ -209,7 +218,7 @@ if __name__ == '__main__':
                       patch_size=32,
                       dim=192*2,
                       depth=12,
-                      heads=3,
+                      heads=6,
                       mlp_dim=768*2)
     x = torch.zeros(16,3,224,224)
     recon_x = vitunet(x)

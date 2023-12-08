@@ -163,7 +163,7 @@ class ViT22BUnet(nn.Module):
                nn.Conv2d(64,128,3),
                nn.InstanceNorm2d(128),
                nn.ReLU()]
-        for _ in range(int(depth/6)):
+        for _ in range(int(depth/3)):
             cnn += [ResidualBlock(128)]
         cnn += [nn.ReflectionPad2d(1),
                 nn.Conv2d(128,64,3),
@@ -180,16 +180,17 @@ class ViT22BUnet(nn.Module):
         
         # 2. embedding
         x = self.patch_to_embedding(x)
+        x += self.pos_embedding
 
         # 3. Encode
         encoder_features = []
         for idx, encoder in enumerate(self.encoders): # range(3)
             x = F.interpolate(x, scale_factor=[1,0.5,0.5][idx]) # down sample
-            x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
+            # x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
             x = encoder(x)
             encoder_features.append(x)
         x = F.interpolate(x, scale_factor=0.5)
-        x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
+        # x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
         x = self.peak(x)
 
         # 4. Decode
@@ -206,7 +207,7 @@ class ViT22BUnet(nn.Module):
         # 6. CNN
         x = self.cnn(x)
         
-        # 7. tanh 
+        # 7. tanh
         x = torch.tanh(x)
         return x
 
@@ -214,10 +215,10 @@ class ViT22BUnet(nn.Module):
 if __name__ == '__main__':
     vit22b = ViT22BUnet(image_size=224,
                     patch_size=32,
-                    dim=1024,
-                    depth=24,
-                    heads=16,
-                    mlp_dim=4096).cuda()
+                    dim=384,
+                    depth=12,
+                    heads=6,
+                    mlp_dim=768*2).cuda()
     x = torch.randn((1,3,224,224)).cuda()
     y = vit22b(x)
 

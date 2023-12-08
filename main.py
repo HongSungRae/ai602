@@ -255,9 +255,13 @@ def main(args):
             model.load_state_dict(torch.load(f"./exp/{args.experiment_name}/model.pt"))
         classification.test(model, test_dataloader, num_classes, save_path, args)
     elif args.task == 'cyclegan':
-        cyclegan.train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimizer, train_dataloader, test_dataloader, args.epochs, save_path, args)
-        utils.save_model(g_AB, save_path, 'g_AB.pt', args.distributed)
-        utils.save_model(g_BA, save_path, 'g_BA.pt', args.distributed)
+        cyclegan.train(g_AB, g_BA, d_A, d_B, 
+                       g_criterion, d_criterion, g_optimizer, d_optimizer, 
+                       train_dataloader, test_dataloader, 
+                       args.epochs, save_path, 
+                       identity=args.identity, args=args)
+        utils.save_model(g_AB, save_path, f'g_AB_{args.epochs}.pt', args.distributed)
+        utils.save_model(g_BA, save_path, f'g_BA_{args.epochs}.pt', args.distributed)
         cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args)
 
     # finish
