@@ -30,7 +30,7 @@ from copy import deepcopy
 from trainer import cyclegan, classification
 from trainer.utils import CycleGANDiscrimonatorLoss, CycleGANGeneratorLoss, weight_init
 from utils import utils
-from models import vit, vit22b, discriminator, vitgan, vit22bgan, vitunet
+from models import vit, vit22b, discriminator, vitgan, vit22bgan, vitunet, vit22bunet
 from dataset import cifar, apple2orange, monet2photo, imagenet
 
 
@@ -40,7 +40,10 @@ def get_parser():
     parser.add_argument('--experiment_name', '--e', default=None, type=str,
                         help='please name your experiment')
     parser.add_argument('--model', default=None, type=str, 
-                        choices=['vit-tiny', 'vit-small', 'vit-base', 'vit-large', 'vit-huge', 'vit-22bt', 'vit-22bs', 'vit-22bb', 'vit-22bl', 'vitunet'],
+                        choices=['vit-tiny', 'vit-small', 'vit-base', 'vit-large', 'vit-huge', 
+                                 'vit-22bt', 'vit-22bs', 'vit-22bb', 'vit-22bl', 
+                                 'vitgan', 'vit22bgan',
+                                 'vitunet', 'vit22bunet'],
                         help='model')
     parser.add_argument('--task', default=None, type=str, choices=['cls', 'classification', 'cyclegan'],
                         help='Task')
@@ -127,7 +130,7 @@ def main(args):
         train_dataset = monet2photo.Monet2Photo('train', args.image_size)
         test_dataset = monet2photo.Monet2Photo('test', args.image_size)
     args.num_classes = num_classes
-    batch_size = 16 if 'gan' in args.task else args.batch_size
+    batch_size = 5 if 'gan' in args.task else args.batch_size
     # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, args.batch_size, True)#, sampler=train_sampler, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, batch_size, True)#, pin_memory=True)
@@ -157,20 +160,7 @@ def main(args):
         else:
             model = model.cuda()
     elif args.task == 'cyclegan':
-        if '22' in args.model:
-            g_AB = vit22bgan.ViT22BGAN(image_size=args.image_size,
-                                       patch_size=args.patch_size,
-                                       dim=model_config['hidden_d'],
-                                       depth=model_config['layers'],
-                                       heads=model_config['heads'],
-                                       mlp_dim=model_config['mlp_size'])
-            g_BA = vit22bgan.ViT22BGAN(image_size=args.image_size,
-                                       patch_size=args.patch_size,
-                                       dim=model_config['hidden_d'],
-                                       depth=model_config['layers'],
-                                       heads=model_config['heads'],
-                                       mlp_dim=model_config['mlp_size'])
-        elif args.model == 'vitunet':
+        if args.model == 'vitunet':
             g_AB = vitunet.ViTUnet(image_size=args.image_size,
                                    patch_size=args.patch_size,
                                    dim=model_config['hidden_d'],
@@ -183,7 +173,33 @@ def main(args):
                                    depth=model_config['layers'],
                                    heads=model_config['heads'],
                                    mlp_dim=model_config['mlp_size'])
-        else:
+        elif args.model == 'vit22bunet':
+            g_AB = vit22bunet.ViT22BUnet(image_size=args.image_size,
+                                         patch_size=args.patch_size,
+                                         dim=model_config['hidden_d'],
+                                         depth=model_config['layers'],
+                                         heads=model_config['heads'],
+                                         mlp_dim=model_config['mlp_size'])
+            g_BA = vit22bunet.ViT22BUnet(image_size=args.image_size,
+                                         patch_size=args.patch_size,
+                                         dim=model_config['hidden_d'],
+                                         depth=model_config['layers'],
+                                         heads=model_config['heads'],
+                                         mlp_dim=model_config['mlp_size'])
+        elif args.model == 'vit22bgan':
+            g_AB = vit22bgan.ViT22BGAN(image_size=args.image_size,
+                                       patch_size=args.patch_size,
+                                       dim=model_config['hidden_d'],
+                                       depth=model_config['layers'],
+                                       heads=model_config['heads'],
+                                       mlp_dim=model_config['mlp_size'])
+            g_BA = vit22bgan.ViT22BGAN(image_size=args.image_size,
+                                       patch_size=args.patch_size,
+                                       dim=model_config['hidden_d'],
+                                       depth=model_config['layers'],
+                                       heads=model_config['heads'],
+                                       mlp_dim=model_config['mlp_size'])
+        elif args.model == 'vitgan':
             g_AB = vitgan.ViTGAN(image_size=args.image_size,
                                  patch_size=args.patch_size,
                                  dim=model_config['hidden_d'],
@@ -260,9 +276,9 @@ def main(args):
                        train_dataloader, test_dataloader, 
                        args.epochs, save_path, 
                        identity=args.identity, args=args)
-        utils.save_model(g_AB, save_path, f'g_AB_{args.epochs}.pt', args.distributed)
-        utils.save_model(g_BA, save_path, f'g_BA_{args.epochs}.pt', args.distributed)
-        cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args)
+        utils.save_model(g_AB, save_path, f'g_AB_final.pt', args.distributed)
+        utils.save_model(g_BA, save_path, f'g_BA_final.pt', args.distributed)
+        cyclegan.test(g_AB, g_BA, test_dataloader, save_path, args=args, quantitative=True)
 
     # finish
     print('\n======== 프로세스 완료 ========')

@@ -4,12 +4,11 @@ from .parameters import data_root
 
 
 
-def get_cifar_dataset(cifar=None, split=None, size=256):
+def get_cifar_dataset(cifar=None, split=None, size=32):
     assert cifar in ['cifar10', 'cifar100']
     assert split in ['train', 'test']
     root = fr'{data_root}/'
     transform = transforms.Compose([transforms.Resize((size,size)),
-                                    transforms.RandomCrop(32,padding=4),
                                     transforms.RandomVerticalFlip(p=0.33),
                                     transforms.RandomHorizontalFlip(p=0.33),
                                     transforms.ToTensor(),

@@ -170,12 +170,16 @@ class ViTUnet(nn.Module):
         self.cnn = nn.Sequential(*cnn)
 
         self.cnn1d = nn.Sequential(nn.Conv1d(4*self.num_patches, 8*self.num_patches, 1),
+                                   nn.InstanceNorm1d(8*self.num_patches),
                                    nn.ReLU(),
                                    nn.Conv1d(8*self.num_patches, 16*self.num_patches, 1),
+                                   nn.InstanceNorm1d(16*self.num_patches),
                                    nn.ReLU(),
                                    nn.Conv1d(16*self.num_patches, 8*self.num_patches, 1),
+                                   nn.InstanceNorm1d(8*self.num_patches),
                                    nn.ReLU(),
                                    nn.Conv1d(8*self.num_patches, 4*self.num_patches, 1),
+                                   nn.InstanceNorm1d(4*self.num_patches),
                                    nn.ReLU(),
                                    nn.Conv1d(4*self.num_patches, self.num_patches, 1))
     
@@ -209,11 +213,14 @@ class ViTUnet(nn.Module):
         
         # 5. Reshape
         # x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', c=self.channels,p1=self.patch_size,p2=self.patch_size,h=int(self.num_patches**0.5))
-        x = rearrange(x, 'b (t h w) (p1 p2 c) -> b (t c) (h p1) (w p2)', 
-                      p1=self.patch_size, p2=self.patch_size, c=self.channels, t=4, h=int(self.num_patches**0.5))
+        # x = rearrange(x, 'b (t h w) (p1 p2 c) -> b (t c) (h p1) (w p2)', 
+        #               p1=self.patch_size, p2=self.patch_size, c=self.channels, t=4, h=int(self.num_patches**0.5))
 
         # 6. CNN
-        x = self.cnn(x)
+        # x = self.cnn(x)
+        x = self.cnn1d(x)
+        x = rearrange(x, 'b (h w) (p1 p2 c) -> b (c) (h p1) (w p2)', 
+                      p1=self.patch_size, p2=self.patch_size, c=self.channels, h=int(self.num_patches**0.5))
         
         # 7. tanh 
         x = torch.tanh(x)
@@ -224,15 +231,18 @@ class ViTUnet(nn.Module):
 
 
 if __name__ == '__main__':
-    vitunet = ViTUnet(image_size=224,
-                      patch_size=32,
+    image_size = 224
+    patch_size = 32
+
+    vitunet = ViTUnet(image_size=image_size,
+                      patch_size=patch_size,
                       dim=192*2,
                       depth=12,
                       heads=6,
                       mlp_dim=768*2)
-    x = torch.zeros(16,3,224,224)
+    x = torch.zeros(16,3,image_size,image_size)
     recon_x = vitunet(x)
     
-    summary(vitunet, (3,224,224), device='cpu')
+    summary(vitunet, (3,image_size,image_size), device='cpu')
     print(recon_x.shape)
     print(torch.min(recon_x), torch.max(recon_x))

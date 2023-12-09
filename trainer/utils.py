@@ -50,7 +50,6 @@ class CycleGANDiscrimonatorLoss(nn.Module):
 
 
 
-
 if __name__ == '__main__':
     # Variables
     A = torch.randn(16,3,256,256)

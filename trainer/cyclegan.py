@@ -4,6 +4,8 @@ from torch.cuda.amp import autocast
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+from torchmetrics.image.fid import FrechetInceptionDistance
+
 
 # local
 from utils import log, utils
@@ -102,7 +104,7 @@ def train(g_AB, g_BA, d_A, d_B, g_criterion, d_criterion, g_optimizer, d_optimiz
     
 
 
-def test(g_AB, g_BA, test_dataloader, save_path, name='cycle_final', args=None, n_imgs=5):
+def test(g_AB, g_BA, test_dataloader, save_path, name='cycle_final', args=None, n_imgs=5, quantitative=False):
     print('++++++++ Test를 시작합니다 ++++++++')
     g_AB.eval()
     g_BA.eval()
@@ -110,6 +112,7 @@ def test(g_AB, g_BA, test_dataloader, save_path, name='cycle_final', args=None, 
     A, B = A.cuda(), B.cuda()
     bs = A.shape[0]
 
+    # 정성적
     with torch.no_grad():
         fake_B = g_AB(A)
         fake_A = g_BA(B)
@@ -127,4 +130,32 @@ def test(g_AB, g_BA, test_dataloader, save_path, name='cycle_final', args=None, 
             plt.imshow(img)
             plt.title(tag)
     plt.savefig(f'{save_path}/{name}.png', format='png')
+    del A, B, fake_A, fake_B, figures
+
+    # 정량적
+    if quantitative:
+        fid_A = FrechetInceptionDistance(feature=64)
+        fid_B = FrechetInceptionDistance(feature=64)
+        for idx, (A, B) in enumerate(test_dataloader):
+            # 추론
+            A, B = A.cuda(), B.cuda()
+            fake_B = g_AB(A)
+            fake_A = g_BA(B)
+            
+            # [-1,1] -> [0, 255] and torch.uint8
+            A, B = (A*0.5+0.5)*255, (B*0.5+0.5)*255
+            A, B = A.detach().cpu().type(torch.uint8), B.detach().cpu().type(torch.uint8)
+            fake_A, fake_B = (fake_A*0.5+0.5)*255, (fake_B*0.5+0.5)*255
+            fake_A, fake_B = fake_A.detach().cpu().type(torch.uint8), fake_B.detach().cpu().type(torch.uint8)
+            
+            # FID update
+            fid_A.update(A, real=True)
+            fid_A.update(fake_A, real=False)
+            fid_B.update(B, real=True)
+            fid_B.update(fake_B, real=False)
+
+        metric = {'FID_A' : f'{fid_A.compute().item():.3f}',
+                  'FID_B' : f'{fid_B.compute().item():.3f}'}
+        utils.save_as_json(save_path, 'metric', metric)
+
     print('++++++++ Test를 종료합니다 ++++++++')

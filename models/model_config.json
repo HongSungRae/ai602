@@ -37,5 +37,9 @@
  "vitunet":{"layers":12,
             "hidden_d":384,
             "mlp_size":1536,
-            "heads":6}
+            "heads":6},
+ "vit22bunet":{"layers":12,
+               "hidden_d":384,
+               "mlp_size":1536,
+               "heads":6}
 }

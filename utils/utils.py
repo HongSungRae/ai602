@@ -32,6 +32,7 @@ def check_parser(args):
 
 
 def save_model(model, save_path, model_name=None, distributed=False):
+    assert model_name != None, '저장할 모델 이름을 지정하세요.'
     if distributed:
         torch.save(model.module.state_dict(), f'{save_path}/{model_name}')
     else:
