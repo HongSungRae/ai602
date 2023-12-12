@@ -48,6 +48,8 @@ def train(model, train_dataloader, val_dataloader, criterion, optimizer, schedul
                                                         top_k=1)
             total_loss.update(loss.item(), x.shape[0])
             train_acc.update(accucacy.item(), x.shape[0])
+            
+            # off annotation when you observe gradient and logit.
             # max_gradient_value = 0
             # for name, param in model.named_parameters():
             #     if param.grad is not None:

@@ -65,9 +65,10 @@ def main():
     else: # gan
         # 1. test dataloader
         if configuration['dataset'] == 'apple2orange':
-            test_dataset = apple2orange.AppleOrange('test', 5)
+            test_dataset = apple2orange.AppleOrange('test', configuration['image_size'])
         elif configuration['dataset'] == 'monet2photo':
-            test_dataset = monet2photo.Monet2Photo('test', 5)
+            test_dataset = monet2photo.Monet2Photo('test', configuration['image_size'])
+        test_dataloader = DataLoader(test_dataset, 5, False)
         
         # 2. model
         if configuration['model'] == 'vitunet':

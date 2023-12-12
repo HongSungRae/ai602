@@ -149,7 +149,6 @@ class ViTUnet(nn.Module):
                                 depth=int(depth/6),
                                 heads=heads,
                                 mlp_dim=int(mlp_dim/8))
-        # self.to_out = nn.Sequential(nn.Linear(dim*4, patch_dim))
         self.to_out = nn.Linear(dim, patch_dim)
         cnn = [nn.ReflectionPad2d(1),
                nn.Conv2d(12,64,3),
@@ -168,16 +167,6 @@ class ViTUnet(nn.Module):
                 nn.ReflectionPad2d(1),
                 nn.Conv2d(64,3,3,1)]
         self.cnn = nn.Sequential(*cnn)
-
-        self.cnn1d = nn.Sequential(nn.Conv1d(4*self.num_patches, 8*self.num_patches, 1),
-                                   nn.ReLU(),
-                                   nn.Conv1d(8*self.num_patches, 16*self.num_patches, 1),
-                                   nn.ReLU(),
-                                   nn.Conv1d(16*self.num_patches, 8*self.num_patches, 1),
-                                   nn.ReLU(),
-                                   nn.Conv1d(8*self.num_patches, 4*self.num_patches, 1),
-                                   nn.ReLU(),
-                                   nn.Conv1d(4*self.num_patches, self.num_patches, 1))
     
 
     def forward(self, x, mask=None):
@@ -190,25 +179,21 @@ class ViTUnet(nn.Module):
 
         # 3. Encode
         encoder_features = []
-        for idx, encoder in enumerate(self.encoders): # range(3)
+        for idx, encoder in enumerate(self.encoders):
             x = F.interpolate(x, scale_factor=[1,0.5,0.5][idx]) # down sample
-            # x += F.interpolate(self.pos_embedding, scale_factor=0.5**idx)
             x = encoder(x)
             encoder_features.append(x)
         x = F.interpolate(x, scale_factor=0.5)
-        # x += F.interpolate(self.pos_embedding, scale_factor=0.5**3)
         x = self.peak(x)
 
         # 4. Decode
-        for idx, decoder in enumerate(self.decoders): # range(3)
+        for idx, decoder in enumerate(self.decoders):
             x = F.interpolate(x, scale_factor=2) # up sample
             x = torch.cat([encoder_features[-idx-1], x], dim=1)
             x = decoder(x)
-        # x = rearrange(x, 'b (t h w) (dim) -> b (h w) (t dim)', t=4,h=int(self.num_patches**0.5))
         x = self.to_out(x) # (b, 4hw, dim)-> (b, 4hw, ppc=patch_dim)
         
         # 5. Reshape
-        # x = rearrange(x, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', c=self.channels,p1=self.patch_size,p2=self.patch_size,h=int(self.num_patches**0.5))
         x = rearrange(x, 'b (t h w) (p1 p2 c) -> b (t c) (h p1) (w p2)', 
                       p1=self.patch_size, p2=self.patch_size, c=self.channels, t=4, h=int(self.num_patches**0.5))
 
@@ -226,10 +211,10 @@ class ViTUnet(nn.Module):
 if __name__ == '__main__':
     vitunet = ViTUnet(image_size=224,
                       patch_size=32,
-                      dim=192*2,
+                      dim=192*2*2,
                       depth=12,
-                      heads=6,
-                      mlp_dim=768*2)
+                      heads=6*2,
+                      mlp_dim=768*2*2)
     x = torch.zeros(16,3,224,224)
     recon_x = vitunet(x)
     

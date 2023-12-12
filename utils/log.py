@@ -83,6 +83,7 @@ def draw_curve(work_dir, train_logger, test_logger, train_label="Train Loss", te
         epoch, train_loss = zip(*train_logger)
         epoch,test_loss = zip(*test_logger)
 
+        plt.figure()
         plt.plot(epoch, train_loss, color='blue', label=train_label)
         plt.plot(epoch, test_loss, color='red', label=test_label)
         plt.xlabel('Epoch')
